@@ -19,7 +19,7 @@ namespace NewYanishe
         bool isStarted = false;
         public TelegramClient()
         {
-            _timer = new Timer(5000);
+            _timer = new Timer(3.6e+6);
             _botClient = new TelegramBotClient("5531659641:AAGboVzSk2Af2SpUdwEm0cqel8VsWDVN4kE");
             _receiverOptions = new ReceiverOptions()
             {
@@ -47,50 +47,55 @@ namespace NewYanishe
         async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
         {
             var messageText = update.Message?.Text;
-            var chatId = update.Message.Chat.Id;
+            var chatId = update.Message?.Chat.Id;
             if (!string.IsNullOrEmpty(messageText))
             {
+                List<string?> messages = new List<string?>();
                 if (messageText.Contains("Ян", StringComparison.OrdinalIgnoreCase))
+                {
+                    var sentBy = update.Message.From.Username;
+                    switch (sentBy)
+                    {
+                        case "Bgdns":
+                            messages = await GetMessagesByName("бодя", "Бодя");
+                            break;
+                        case "Afonichevds":
+                            messages = await GetMessagesByName("денис", "Денис");
+                            break;
+                        case "Wpwiwysott":
+                            messages = await GetMessagesByName("жека", "Жека");
+                            break;
+                        case "Gleib":
+                            messages = await GetMessagesByName("глеб", "Глеб");
+                            break;
+                        default:
+                            break;
+                    }
+
+                }
+                else if (messageText.Contains("кочалк", StringComparison.OrdinalIgnoreCase)
+                    || messageText.Contains("кончалк", StringComparison.OrdinalIgnoreCase)
+                    || messageText.Contains("дроч", StringComparison.OrdinalIgnoreCase))
                 {
                     using (var db = new MessageContext())
                     {
-                        var sentBy = update.Message.From.Username;
-                        List<string?> messages;
-                        switch (sentBy)
-                        {
-                            case "Bgdns":
-                                messages = await db.Messages
-                                    .Where(m => string.IsNullOrEmpty(m.Text))
-                                    .Where(m => m.Text.Contains("Бодя", StringComparison.OrdinalIgnoreCase))
-                                    .Select(m => m.Text)
-                                    .ToListAsync();
-                                break;
-                            case "Afonichevds":
-                                messages = await db.Messages
-                                    .Where(m => string.IsNullOrEmpty(m.Text))
-                                    .Where(m => m.Text.Contains("Денис", StringComparison.OrdinalIgnoreCase))
-                                    .Select(m => m.Text)
-                                    .ToListAsync();
-                                break;
-                            case "Wpwiwysott":
-                                messages = await db.Messages
-                                    .Where(m => string.IsNullOrEmpty(m.Text))
-                                    .Where(m => m.Text.Contains("Жека", StringComparison.OrdinalIgnoreCase))
-                                    .Select(m => m.Text)
-                                    .ToListAsync();
-                                break;
-                            case "Gleib":
-                                messages = await db.Messages
-                                    .Where(m => string.IsNullOrEmpty(m.Text))
-                                    .Where(m => m.Text.Contains("Глеб", StringComparison.OrdinalIgnoreCase))
-                                    .Select(m => m.Text)
-                                    .ToListAsync();
-                                break;
-                            default:
-                                break;
-                        }
+                        messages = await db.Messages
+                                .Where(m => !string.IsNullOrEmpty(m.Text))
+                                .Where(m =>
+                                m.Text.Contains("Чел ")
+                                || m.Text.Contains("чел ")
+                                || m.Text.Contains("Пацаны ")
+                                || m.Text.Contains("пацаны "))
+                                .Select(m => m.Text)
+                                .ToListAsync();
                     }
                 }
+                if (messages.Any())
+                {
+                    var randomIndex = new Random().Next(0, messages.Count() - 1);
+                    await botClient.SendTextMessageAsync(update.Message.Chat.Id, messages[randomIndex], replyToMessageId: update.Message.MessageId);
+                }
+
                 if (messageText == @"/start@Yanishe_GeruchBot")
                 {
                     if (isStarted)
@@ -106,7 +111,7 @@ namespace NewYanishe
                     _timer.Enabled = true;
                     _timer.Start();
                 }
-                if (messageText == @"/stop@Yanishe_GeruchBot")
+                else if (messageText == @"/stop@Yanishe_GeruchBot")
                 {
                     if (!isStarted)
                     {
@@ -122,25 +127,38 @@ namespace NewYanishe
                 async void SendYansMessageEvent(object source, ElapsedEventArgs e)
                 {
                     Entities.Message randomMessageEntity;
-                    //using (MessageContext db = new MessageContext())
-                    //{
-                    //    var randomIndex = new Random().Next(1, 84956);
-                    //    //randomMessageEntity = await db.Messages.FindAsync(randomIndex);
-                    //}
-                    //var messageText = randomMessageEntity.Text;
-                    var messageText = "1";
+                    using (MessageContext db = new MessageContext())
+                    {
+                        var randomIndex = new Random().Next(1, 84956);
+                        randomMessageEntity = await db.Messages.FindAsync(randomIndex);
+                    }
+                    var messageText = randomMessageEntity.Text;
+                    //var messageText = "1";
                     if (!string.IsNullOrEmpty(messageText))
                     {
-                        //try
-                        //{
-                        await botClient.SendTextMessageAsync(update.Message.Chat.Id, messageText);
-                        //}
-                        //catch
-                        //{
-                        //    await Task.Delay(10000);
-                        //}
+                        try
+                        {
+                            await botClient.SendTextMessageAsync(update.Message.Chat.Id, messageText);
+                        }
+                        catch
+                        {
+                            await Task.Delay(10000);
+                        }
                     }
                 }
+            }
+        }
+
+        private async Task<List<String>> GetMessagesByName(string lowercaseName, string uppercaseName)
+        {
+            using (var db = new MessageContext())
+            {
+                return await db.Messages
+                        .Where(m => !string.IsNullOrEmpty(m.Text))
+                        .Where(m => m.Text.Length > 5)
+                        .Where(m => m.Text.Contains(uppercaseName) || m.Text.Contains(lowercaseName))
+                        .Select(m => m.Text)
+                        .ToListAsync();
             }
         }
 
