@@ -48,47 +48,58 @@ namespace NewYanishe
         {
             var messageText = update.Message?.Text;
             var chatId = update.Message?.Chat.Id;
+            List<string?> messages = new List<string?>();
             if (!string.IsNullOrEmpty(messageText))
             {
-                List<string?> messages = new List<string?>();
-                if (messageText.Contains("Ян", StringComparison.OrdinalIgnoreCase))
+                if (update.Message?.ReplyToMessage != null
+                    && update.Message?.ReplyToMessage?.From?.Username == "Yanishe_GeruchBot")
                 {
-                    var sentBy = update.Message.From.Username;
-                    switch (sentBy)
-                    {
-                        case "Bgdns":
-                            messages = await GetMessagesByName("бодя", "Бодя");
-                            break;
-                        case "Afonichevds":
-                            messages = await GetMessagesByName("денис", "Денис");
-                            break;
-                        case "Wpwiwysott":
-                            messages = await GetMessagesByName("жека", "Жека");
-                            break;
-                        case "Gleib":
-                            messages = await GetMessagesByName("глеб", "Глеб");
-                            break;
-                        default:
-                            break;
-                    }
-
+                    messages = await GetReplies(update);
+                    var randomIndex = new Random().Next(0, messages.Count() - 1);
+                    await botClient.SendTextMessageAsync(update.Message.Chat.Id, messages[randomIndex], replyToMessageId: update.Message.MessageId);
+                    return;
                 }
-                else if (messageText.Contains("кочалк", StringComparison.OrdinalIgnoreCase)
-                    || messageText.Contains("кончалк", StringComparison.OrdinalIgnoreCase)
-                    || messageText.Contains("дроч", StringComparison.OrdinalIgnoreCase))
+                if (messageText.Contains("аниме", StringComparison.OrdinalIgnoreCase)
+                    || messageText.Contains("anime", StringComparison.OrdinalIgnoreCase)
+                       || messageText.Contains("anime", StringComparison.OrdinalIgnoreCase))
                 {
                     using (var db = new MessageContext())
                     {
                         messages = await db.Messages
                                 .Where(m => !string.IsNullOrEmpty(m.Text))
-                                .Where(m =>
-                                m.Text.Contains("Чел ")
-                                || m.Text.Contains("чел ")
-                                || m.Text.Contains("Пацаны ")
-                                || m.Text.Contains("пацаны "))
+                                .Where(m => m.Text.Length > 5)
+                                .Where(m => m.Text.Contains("аниме") || m.Text.Contains("Аниме"))
                                 .Select(m => m.Text)
                                 .ToListAsync();
+                        var randomIndex = new Random().Next(0, messages.Count() - 1);
+                        await botClient.SendTextMessageAsync(update.Message.Chat.Id, messages[randomIndex], replyToMessageId: update.Message.MessageId);
+                        return;
                     }
+                }
+                else if (messageText.Contains("Ян", StringComparison.OrdinalIgnoreCase))
+                {
+                    messages = await GetReplies(update);
+                }
+
+                if (Dictionaries.ZhekasDictionary.Any(x => messageText.Contains(x, StringComparison.OrdinalIgnoreCase)))
+                {
+                    messages = await GetMessagesByName("жека", "Жека");
+                }
+                if (Dictionaries.GlebsDictionary.Any(x => messageText.Contains(x, StringComparison.OrdinalIgnoreCase)))
+                {
+                    messages = await GetMessagesByName("глеб", "Глеб");
+                }
+                if (Dictionaries.DenisesDictionary.Any(x => messageText.Contains(x, StringComparison.OrdinalIgnoreCase)))
+                {
+                    messages = await GetMessagesByName("денис", "Денис");
+                }
+                if (Dictionaries.YansDictionary.Any(x => messageText.Contains(x, StringComparison.OrdinalIgnoreCase)))
+                {
+                    messages = await GetMessagesByName(" я ", " Я ");
+                }
+                if (Dictionaries.BodyasDictionary.Any(x => x.Contains(messageText, StringComparison.OrdinalIgnoreCase)))
+                {
+                    messages = await GetMessagesByName("бодя", "Бодя");
                 }
                 if (messages.Any())
                 {
@@ -149,7 +160,7 @@ namespace NewYanishe
             }
         }
 
-        private async Task<List<String>> GetMessagesByName(string lowercaseName, string uppercaseName)
+        private async Task<List<string>> GetMessagesByName(string lowercaseName, string uppercaseName)
         {
             using (var db = new MessageContext())
             {
@@ -180,6 +191,32 @@ namespace NewYanishe
         public void Dispose()
         {
             _cts.Dispose();
+        }
+
+        private async Task<List<string>> GetReplies(Update update)
+        {
+            var messages = new List<string>();
+            var sentBy = update.Message.From.Username;
+            switch (sentBy)
+            {
+                case "Bgdns":
+                    messages = await GetMessagesByName("бодя", "Бодя");
+                    break;
+                case "Afonichevds":
+                    messages = await GetMessagesByName("денис", "Денис");
+                    break;
+                case "Wpwiwysott":
+                    messages = await GetMessagesByName("жека", "Жека");
+                    break;
+                case "Gleib":
+                    messages = await GetMessagesByName("глеб", "Глеб");
+                    break;
+                default:
+                    messages = await GetMessagesByName(" я ", " Я ");
+                    break;
+            }
+
+            return messages;
         }
     }
 }
